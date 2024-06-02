@@ -32,6 +32,8 @@ MSG = getenv(\"MSG\")
 
 # src/services/functions.py
 echo "from config import settings as st
+
+
 def messenger(msg):
     print(\"\n\n\", msg, \"\n\n\")
 " >src/services/functions.py
@@ -52,6 +54,7 @@ logs/
 scripts/
 staff/
 tests/
+__pycache__/
 *.pyc
 EOL
 
