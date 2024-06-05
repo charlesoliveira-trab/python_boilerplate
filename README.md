@@ -2,6 +2,11 @@
 
 Bem-vindo ao repositório **Python Automation Script Template**!
 
+### Speedrun
+```sh
+curl -o setup.sh https://raw.githubusercontent.com/OliveiraCharles/python_boilerplate/main/scripts/setup.sh && source setup.sh
+```
+
 Este repositório tem como objetivo fornecer à comunidade de desenvolvedores Python uma estrutura simples e organizada para a criação rápida de scripts de automação. Ele inclui logs, testes e configuração segura usando a biblioteca `python-dotenv`.
 
 ## Estrutura do Projeto
