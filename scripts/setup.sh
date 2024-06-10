@@ -236,12 +236,15 @@ EOL
 # .venv
 . scripts/venv.sh
 
+# Versão
+echo "Versionando com Git flow..."
+git flow init -d
+
 # .scripts/run.sh
 . scripts/run.sh
-
-# Versão
-git flow init -d
 
 echo "
 
 Projeto inicializado!"
+
+rm setup.sh
