@@ -116,68 +116,6 @@ elif [[ "\$OSTYPE" == "cygwin" ]] || [[ "\$OSTYPE" == "msys" ]] || [[ "\$OSTYPE"
 fi
 EOL
 
-# scripts/desinstalar.sh
-cat <<EOL >scripts/desinstalar.sh
-#!/bin/bash
-
-# Diretórios e arquivos a serem removidos
-directories=(data src tests)
-files=(requirements.txt .env .gitignore README.md)
-
-# Função para remover diretórios e arquivos
-cleanup() {
-    for dir in "\${directories[@]}"; do
-        if [ -d "\$dir" ]; then
-            rm -rf "\$dir"
-            echo "Diretório \$dir removido."
-        fi
-    done
-
-    for file in "\${files[@]}"; do
-        if [ -f "\$file" ]; then
-            rm "\$file"
-            echo "Arquivo \$file removido."
-        fi
-    done
-}
-
-# Função para remover logs
-remove_logs() {
-    if [ -d "logs" ]; then
-        rm -rf logs
-        echo "Diretório logs removido."
-    fi
-
-    # Remove arquivos de log restantes na pasta raíz
-    if ls main-*.log 1>/dev/null 2>&1; then
-        rm main-*.log
-        echo "Arquivos de log main-*.log removidos."
-    fi
-}
-
-# Lê a opção do usuário
-read -p "Deseja remover a pasta logs? (s/n): " remove_logs_option
-
-# Chama a função de limpeza
-cleanup
-
-# Remove o ambiente virtual
-if [ -d ".venv" ]; then
-    rm -rf .venv
-    echo "Ambiente virtual .venv removido."
-fi
-
-# Verifica a opção do usuário e remove logs se necessário
-if [[ "\$remove_logs_option" == "s" || "\$remove_logs_option" == "S" ]]; then
-    remove_logs
-else
-    echo "A pasta logs foi mantida."
-fi
-
-# Mantém a pasta scripts
-echo "A pasta scripts foi mantida."
-EOL
-
 # scripts/venv.sh
 cat <<EOL > scripts/venv.sh
 #!/bin/bash
