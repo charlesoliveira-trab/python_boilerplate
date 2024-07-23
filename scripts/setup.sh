@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Diretórios
-mkdir -p data src/config src/services tests logs scripts
+mkdir -p data logs src/config src/services scripts staff tests
 
 # Arquitetura
 touch requirements.txt
