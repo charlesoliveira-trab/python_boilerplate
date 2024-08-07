@@ -17,10 +17,10 @@ touch README.md
 touch scripts/run.sh
 
 # Requirements
-echo "python-dotenv" >requirements.txt
+echo "python-dotenv" >>requirements.txt
 
 # .env
-echo "MSG='Hello from .env!'" >.env
+echo "MSG='Hello from .env!'" >>.env
 
 # src/config/settings.py
 echo "from os import getenv
@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 MSG = getenv(\"MSG\")
-" >src/config/settings.py
+" >>src/config/settings.py
 
 # src/services/functions.py
 echo "from config import settings as st
@@ -36,17 +36,17 @@ echo "from config import settings as st
 
 def messenger(msg):
     print(\"\n\n\", msg, \"\n\n\")
-" >src/services/functions.py
+" >>src/services/functions.py
 
 # main.py
 echo "from services import functions as fc
 from config import settings as st
 
 fc.messenger(st.MSG)
-" >src/main.py
+" >>src/main.py
 
 # .gitignore
-cat <<EOL >.gitignore
+cat <<EOL >>.gitignore
 .venv/
 .env
 data/
@@ -59,7 +59,7 @@ __pycache__/
 EOL
 
 # scripts/logs.sh
-cat <<EOL >scripts/logs.sh
+cat <<EOL >>scripts/logs.sh
 #!/bin/bash
 
 LOGS=./logs
@@ -91,7 +91,7 @@ fi
 EOL
 
 # scripts/run.sh
-cat <<EOL >scripts/run.sh
+cat <<EOL >>scripts/run.sh
 #!/bin/bash
 
 WIN_PATH='./'
@@ -117,7 +117,7 @@ fi
 EOL
 
 # scripts/venv.sh
-cat <<EOL > scripts/venv.sh
+cat <<EOL >> scripts/venv.sh
 #!/bin/bash
 
 if [[ -d ".venv" ]]; then
