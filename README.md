@@ -121,6 +121,7 @@ Contribuições são bem-vindas! Sinta-se à vontade para contribuir com melhori
 - `[remove]` - Para remover funcionalidades ou arquivos obsoletos.
 - `[test]` - Para adicionar ou modificar testes.
 - `[doc]` - Para mudanças na documentação.
+- `[sec]` - Para correções de vulnerabilidades.
 
 ---
 Espero ter ajudado!
