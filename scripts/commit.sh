@@ -1,37 +1,11 @@
 #!/bin/bash
+# scripts/commit.sh
 # set -e # Faz o script sair se um comando falhar
 
 export PYTHONPATH=$(pwd)/src
 file_name=$(date +"%Y%m%d-%H%M")-commit.log
 
-f_alembic(){
-    echo "Executando Alembic..."
-
-    if [ ! -d "alembic" ]; then
-        echo "Inicializando o diretório Alembic..."
-        alembic init alembic
-    else
-        echo "Diretório Alembic já inicializado."
-    fi
-
-    # Atualiza o banco de dados para a versão mais recente
-    echo "Atualizando o banco de dados para a versão mais recente..."
-    alembic upgrade head
-
-    # Gera uma nova revisão automática
-    revision_message="[update] $(date +'%Y-%m-%d %H:%M:%S')"
-    echo "Gerando nova revisão Alembic: $revision_message"
-    alembic revision --autogenerate -m "$revision_message"
-}
-
 commit() {
-    # Inicializa o diretório alembic, se ainda não estiver inicializado
-    f_alembic
-
-    # Executa o script de linting
-    echo "Executando o script de linting..."
-    . scripts/lint.sh
-
     # Adiciona as alterações ao stage do git
     echo "Adicionando as alterações ao stage do Git..."
     git add .
@@ -54,5 +28,9 @@ commit() {
 
     echo "Commit concluído com sucesso."
 }
+
+bash scripts/migrations.sh
+bash scripts/lint.sh
+bash scripts/test.sh
 
 commit 2>&1 | tee -a logs/$file_name
