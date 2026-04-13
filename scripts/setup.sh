@@ -20,6 +20,7 @@ touch scripts/run.sh
 echo "python-dotenv
 isort
 blue
+pytest
 " >>requirements.txt
 
 # .env
@@ -48,24 +49,28 @@ from config import settings as st
 fc.messenger(st.MSG)
 " >>src/main.py
 
-# Define a URL para gerar o .gitignore
-URL="https://www.toptal.com/developers/gitignore/api/python,visualstudiocode"
-
-# Faz o download do conteúdo e salva em .gitignore
-curl -s "$URL" -o .gitignore
-
 # .gitignore
-cat <<EOL >>.gitignore
-.venv/
-.env
-data/
-logs/
-scripts/
-staff/
-tests/
-__pycache__/
-*.pyc
-EOL
+echo "
+*
+
+!README.md
+!requirements.txt
+!.gitignore
+!docker-compose.yml
+!dockerfile.yml
+
+!logs/
+!data/
+!test/
+
+!scripts/
+!scripts/run.sh
+!scripts/logs.sh
+
+!src/
+!src/*
+!src/**/*.py
+" >>.gitignore
 
 cat <<EOL >README.md
 # Nome da Aplicação
@@ -176,9 +181,8 @@ Esse script faz o seguinte:
 │   │   └── jira_service.py     # Serviços de integração com Jira
 │   └── main.py                 # Script principal de execução
 ├── scripts
-│   ├── venv.sh                 # Script para criação do ambiente virtual
 │   ├── run.sh                  # Script para iniciar a aplicação
-│   └── linter.sh               # Script para execução do linter
+│   └── logs.sh                 # Script para analise de logs
 ├── requirements.txt            # Dependências da aplicação
 ├── .env                        # Arquivo de variáveis de ambiente (exemplo)
 ├── LICENSE                     # Licença do projeto
@@ -187,13 +191,10 @@ Esse script faz o seguinte:
 
 ## Scripts
 
-### Venv
-
-O script \`venv.sh\` configura o ambiente virtual e instala as dependências da aplicação, utilizando o \`requirements.txt\`. Execute sempre que uma nova dependência for adicionada.
-
 ### Run
 
 O script \`run.sh\` executa a aplicação no ambiente virtual, permitindo passagem de parâmetros para determinar o ambiente (\`dev\`, \`prod\`).
+Caso não exista, onfigura o ambiente virtual e instala as dependências da aplicação, utilizando o \`requirements.txt\`. Execute sempre que uma nova dependência for adicionada.
 
 ### Linter
 
@@ -355,7 +356,7 @@ bash scripts/migrations.sh
 bash scripts/lint.sh
 bash scripts/test.sh
 
-commit 2>&1 | tee -a logs/\$file_name
+commit 2>&1 | tee -a logs/commit/\$file_name
 EOL
 
 # scripts/migrations.sh
@@ -417,89 +418,138 @@ EOL
 # scripts/run.sh
 cat <<EOL >scripts/run.sh
 #!/bin/bash
+#scripts/run.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_PATH="$(dirname "$SCRIPT_DIR")"
+LOG_FILE="$APP_PATH/logs/run.log"
 
-WIN_PATH='./'
-LINUX_PATH='./'
+# Função para exibir mensagens de erro e sair
+handle_error() {
+    echo "$(date +%F\ %X) [ERROR] $1"
+    deactivate
+    exit 1
+}
 
-if [[ "\$OSTYPE" == "linux-gnu"* ]]; then
-    # Linux
-    PROJECT_PATH=\$LINUX_PATH
-    cd \$PROJECT_PATH
-    echo \$(pwd)
-    source .venv/bin/activate
-    python src/main.py 2>&1 | tee -a logs/main-\$(date +"%Y%m%d-%H%M").log
-    deactivate
-elif [[ "\$OSTYPE" == "cygwin" ]] || [[ "\$OSTYPE" == "msys" ]] || [[ "\$OSTYPE" == "win32" ]]; then
-    # Windows
-    PROJECT_PATH=\$WIN_PATH
-    cd \$PROJECT_PATH
-    echo \$(pwd)
-    source .venv/Scripts/activate
-    python src/main.py 2>&1 | tee -a logs/main-\$(date +"%Y%m%d-%H%M").log
-    deactivate
-fi
+handle_info() {
+    echo "$(date +%F\ %X) [INFO] $1"
+}
+
+# Função principal para detectar o sistema operacional
+os_detect() {
+    handle_info "Detectando sistema Operacional..."
+
+    OS=$(uname)
+    handle_info "Sistema Operacional: $OS"
+
+    handle_info "Adaptando ao sistema..."
+    if [[ "$OS" == "Linux" ]]; then
+        ACTIVATE_CMD="$APP_PATH/.venv/bin/activate"        
+        PYTHON_CMD="python3"
+
+    elif [[ "$OS" == CYGWIN* ]] || [[ "$OS" == MINGW* ]] || [[ "$OS" == "Windows"* ]]; then
+        ACTIVATE_CMD="$APP_PATH/.venv/Scripts/activate"
+        PYTHON_CMD="python"
+        
+    else
+        handle_error "Sistema operacional não suportado: $OS"
+    fi
+}
+
+# Função principal para carregar variáveis do .env
+venv_load() {
+    if [ ! -f .env ]; then
+        handle_error "Arquivo .env não encontrado."
+    fi
+
+    set -o allexport
+    source "$APP_PATH/.env"
+    set +o allexport
+    
+    handle_info "Arquivo .env carregado com sucesso!"
+}
+
+venv_update() {
+    handle_info "Atualizando ambiente virtual..."
+    venv_activate
+    pip install --upgrade pip || handle_error "Falha ao atualizar o pip."
+    pip install -r "$APP_PATH/requirements.txt" || handle_error "Falha ao instalar as dependências."
+    venv_deactivate
+    handle_info "Ambiente virtual atualizado com sucesso!"
+}
+
+venv_create() {
+    if [ ! -d "$APP_PATH/.venv" ]; then
+        handle_info "Criando ambiente virtual..."
+        $PYTHON_CMD -m venv "$APP_PATH/.venv" || handle_error "Falha ao criar o ambiente virtual."
+        handle_info "Ambiente virtual criado com sucesso!"
+        venv_update
+    else
+        handle_info "Ambiente virtual já existe."
+    fi
+}
+
+venv_verify() {
+    handle_info "Verificando ambiente virtual..."
+    if [ ! -d "$APP_PATH/.venv" ]; then
+        venv_create
+    fi        
+}
+
+venv_activate(){
+    # Verifica se o ambiente virtual existe
+    venv_verify
+    handle_info "Ativando ambiente virtual..."
+    source $ACTIVATE_CMD || handle_error "Falha ao ativar o ambiente virtual."
+    handle_info "Ambiente virtual ativado com sucesso!"
+}
+
+venv_deactivate(){
+    handle_info "Desativando ambiente virtual..."
+    deactivate || handle_error "Falha ao desativar o ambiente virtual."
+    handle_info "Ambiente virtual desativado."
+}
+
+script_execute(){
+    venv_activate
+    handle_info "Executando o script Python..."
+    $PYTHON_CMD src/main.py 2>&1 | tee -a $LOG_FILE || handle_error "Falha ao executar o script Python."
+    handle_info "Script executado com sucesso!"
+    venv_deactivate
+}
+
+directory_change(){
+    handle_info "Navegando para o diretório do projeto..."
+    cd "$APP_PATH" || handle_error "Diretório do projeto não encontrado: $APP_PATH"
+    handle_info "Diretório atual: $(pwd)"
+}
+
+# Função principal para executar o script Python
+run(){
+    handle_info "Iniciando Processo..."
+
+    # Navega para o diretório do projeto
+    directory_change
+
+    # Carrega as variáveis de ambiente
+    venv_load
+
+    # Detecta o sistema operacional
+    os_detect
+
+    # Executa o script
+    script_execute
+}
+
+# Executa a função principal
+run
 EOL
 
-# scripts/venv.sh
-cat <<EOL >scripts/venv.sh
-#!/bin/bash
-echo "
-Sistema operacional: \$OSTYPE"
-
-if [[ -d ".venv" ]]; then
-    echo "Atualizando o ambiente virtual..."
-    if [[ "\$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux
-        source .venv/bin/activate &&
-            python -m pip install -U pip &&
-            python -m pip install -r requirements.txt
-    elif [[ "\$OSTYPE" == "darwin"* ]]; then
-        # Mac OSX
-        source .venv/bin/activate &&
-            python -m pip install -U pip &&
-            python -m pip install -r requirements.txt
-    elif [[ "\$OSTYPE" == "cygwin" ]] || [[ "\$OSTYPE" == "msys" ]] || [[ "\$OSTYPE" == "win32" ]]; then
-        # Windows
-        source .venv/Scripts/activate &&
-            python -m pip install -U pip &&
-            python -m pip install -r requirements.txt
-    fi
-    echo "Ambiente virtual atualizado!"
-else
-    echo "Criando ambiente virtual..."
-    if [[ "\$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux
-        python3 -m venv .venv &&
-            source .venv/bin/activate &&
-            python -m pip install -U pip &&
-            python -m pip install -r requirements.txt
-    elif [[ "\$OSTYPE" == "darwin"* ]]; then
-        # Mac OSX
-        python3 -m venv .venv &&
-            source .venv/bin/activate &&
-            python -m pip install -U pip &&
-            python -m pip install -r requirements.txt
-    elif [[ "\$OSTYPE" == "cygwin" ]] || [[ "\$OSTYPE" == "msys" ]] || [[ "\$OSTYPE" == "win32" ]]; then
-        # Windows
-        python -m venv .venv &&
-            source .venv/Scripts/activate &&
-            python -m pip install -U pip &&
-            python -m pip install -r requirements.txt
-    fi
-    echo "Ambiente virtual criado!"
-fi
-
-deactivate
-EOL
-
-# .venv
-. scripts/venv.sh
+# Execução inicial
+. scripts/run.sh
 
 # Versão
 echo "Versionando com Git flow..."
 git flow init -d
-
-. scripts/run.sh
 
 echo "
 Projeto inicializado!"
