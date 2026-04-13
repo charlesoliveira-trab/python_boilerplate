@@ -1,14 +1,20 @@
 *
-.env
 
-!.gitignore
-!.env.example
 !README.md
+!requirements.txt
+!.gitignore
+!docker-compose.yml
+!dockerfile.yml
 
-!src/
-!src/*
+!logs/
+!data/
+!test/
 
 !scripts/
 !scripts/run.sh
+!scripts/venv.sh
+!scripts/logs.sh
 
-!logs/
+!src/
+!src/*
+!src/**/*.py
