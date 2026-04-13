@@ -1,55 +1,43 @@
 #!/bin/bash
 #scripts/run.sh
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_PATH="$(dirname "$SCRIPT_DIR")"
-LOG_FILE="./logs/run.log"
-
-# Bash
-MAIN_FILE="./src/big_numbers.sh"
-WIN_CMD="bash"
-LINUX_CMD="bash"
-
-# Python:
-# MAIN_FILE="./src/main.py"
-# WIN_CMD="python"
-# LINUX_CMD="python3"
-
-# Java:
-# MAIN_FILE="./src/Main.java"
-# WIN_CMD="java"
-# LINUX_CMD="java"
-# LINUX_CMD="java -jar"
-
-# C#:
-# MAIN_FILE="./src/Program.cs
-# WIN_CMD="dotnet"
-# LINUX_CMD="dotnet"
-# LINUX_CMD="dotnet run"
-
-# C++:
-# MAIN_FILE="./src/main.cpp"
-# WIN_CMD="g++"
-# LINUX_CMD="g++"
-# LINUX_CMD="g++ -o main main.cpp"
-
-# javascript:
-# MAIN_FILE="./src/main.js"
-# WIN_CMD="node"
-# LINUX_CMD="node"
-
-
+LOG_FILE="$APP_PATH/logs/run.log"
 
 # Função para exibir mensagens de erro e sair
 handle_error() {
-    echo "❌ Erro: $1"
+    echo "$(date +%F\ %X) [ERROR] $1"
     deactivate
     exit 1
 }
 
+handle_info() {
+    echo "$(date +%F\ %X) [INFO] $1"
+}
+
+# Função principal para detectar o sistema operacional
+os_detect() {
+    handle_info "Detectando sistema Operacional..."
+
+    OS=$(uname)
+    handle_info "Sistema Operacional: $OS"
+
+    handle_info "Adaptando ao sistema..."
+    if [[ "$OS" == "Linux" ]]; then
+        ACTIVATE_CMD="$APP_PATH/.venv/bin/activate"        
+        PYTHON_CMD="python3"
+
+    elif [[ "$OS" == CYGWIN* ]] || [[ "$OS" == MINGW* ]] || [[ "$OS" == "Windows"* ]]; then
+        ACTIVATE_CMD="$APP_PATH/.venv/Scripts/activate"
+        PYTHON_CMD="python"
+        
+    else
+        handle_error "Sistema operacional não suportado: $OS"
+    fi
+}
+
 # Função principal para carregar variáveis do .env
-load_env() {
-    # Carrega as variáveis do arquivo .env
+venv_load() {
     if [ ! -f .env ]; then
         handle_error "Arquivo .env não encontrado."
     fi
@@ -58,45 +46,80 @@ load_env() {
     source "$APP_PATH/.env"
     set +o allexport
     
-    echo "Arquivo .env carregado com sucesso!"
+    handle_info "Arquivo .env carregado com sucesso!"
 }
 
-# Função principal para detectar o sistema operacional
-os_detect() {
-    OS=$(uname)
-    if [[ "$OS" == "Linux" ]]; then       
-        COMMAND=$LINUX_CMD
-    elif [[ "$OS" == CYGWIN* ]] || [[ "$OS" == MINGW* ]] || [[ "$OS" == "Windows"* ]]; then
-        COMMAND=$WIN_CMD
-    else
-        handle_error "Sistema operacional não suportado: $OS"
-    fi
+venv_update() {
+    handle_info "Atualizando ambiente virtual..."
+    venv_activate
+    pip install --upgrade pip || handle_error "Falha ao atualizar o pip."
+    pip install -r "$APP_PATH/requirements.txt" || handle_error "Falha ao instalar as dependências."
+    venv_deactivate
+    handle_info "Ambiente virtual atualizado com sucesso!"
+}
 
+venv_create() {
+    if [ ! -d "$APP_PATH/.venv" ]; then
+        handle_info "Criando ambiente virtual..."
+        $PYTHON_CMD -m venv "$APP_PATH/.venv" || handle_error "Falha ao criar o ambiente virtual."
+        handle_info "Ambiente virtual criado com sucesso!"
+        venv_update
+    else
+        handle_info "Ambiente virtual já existe."
+    fi
+}
+
+venv_verify() {
+    handle_info "Verificando ambiente virtual..."
+    if [ ! -d "$APP_PATH/.venv" ]; then
+        venv_create
+    fi        
+}
+
+venv_activate(){
+    # Verifica se o ambiente virtual existe
+    venv_verify
+    handle_info "Ativando ambiente virtual..."
+    source $ACTIVATE_CMD || handle_error "Falha ao ativar o ambiente virtual."
+    handle_info "Ambiente virtual ativado com sucesso!"
+}
+
+venv_deactivate(){
+    handle_info "Desativando ambiente virtual..."
+    deactivate || handle_error "Falha ao desativar o ambiente virtual."
+    handle_info "Ambiente virtual desativado."
+}
+
+script_execute(){
+    venv_activate
+    handle_info "Executando o script Python..."
+    $PYTHON_CMD src/main.py 2>&1 | tee -a $LOG_FILE || handle_error "Falha ao executar o script Python."
+    handle_info "Script executado com sucesso!"
+    venv_deactivate
+}
+
+directory_change(){
+    handle_info "Navegando para o diretório do projeto..."
+    cd "$APP_PATH" || handle_error "Diretório do projeto não encontrado: $APP_PATH"
+    handle_info "Diretório atual: $(pwd)"
 }
 
 # Função principal para executar o script Python
 run(){
+    handle_info "Iniciando Processo..."
 
-    echo "Navegando para o diretório do projeto..."
-    cd "$APP_PATH" || handle_error "Diretório do projeto não encontrado: $APP_PATH"
-    echo "Diretório atual: $(pwd)
-    "
-    
-    echo "Detectando sistema Operacional..."
+    # Navega para o diretório do projeto
+    directory_change
+
+    # Carrega as variáveis de ambiente
+    venv_load
+
+    # Detecta o sistema operacional
     os_detect
-    echo "Sistema Operacional: $OS
-    "
 
-    echo "Executando o script..."
-    $COMMAND $MAIN_FILE 2>&1 | tee -a $LOG_FILE
-    if [ $? -ne 0 ]; then
-        handle_error "Erro durante a execução do script."
-    fi
+    # Executa o script
+    script_execute
 }
 
 # Executa a função principal
-echo "Iniciando Processo..."
-echo ""
 run
-echo ""
-echo "Script executado com sucesso!"
